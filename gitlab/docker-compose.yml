@@ -1,0 +1,45 @@
+version: '3.7' 
+services:
+  gitlab:
+    image: 'gitlab/gitlab-ce:14.8.1-ce.0'
+    restart: always
+    hostname: 'gitlab'
+    container_name: gitlab
+    privileged: true
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://${GITLAB_HOST}'
+    ports:
+      - "443:443"
+      - "22:22"
+      - "80:80" 
+    volumes:
+      - '.gitlab/etc:/etc/gitlab'
+      - '.gitlab/log:/var/log/gitlab'
+      - '.gitlab/data:/var/opt/gitlab'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+  
+  runner1:
+    image: 'gitlab/gitlab-runner:alpine-v14.8.0'
+    container_name: runner1
+    hostname: runner1
+    restart: always
+    volumes:
+      - './runner:/etc/gitlab-runner'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    environment:
+      - DOCKER_HOST=tcp://docker:2375
+      - DOCKER_TLS_CERTDIR=/certs
+    depends_on:
+      - gitlab
+    healthcheck:
+      test: ["CMD-SHELL", "gitlab-runner verify --delete"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 30s
